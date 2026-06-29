@@ -17,6 +17,12 @@
 #include <power/mt6359.h>
 #include <time.h>
 
+static const struct pmic_child_info mt6323_pmic_children_info[] = {
+	{ .prefix = "buck", .driver = "mt6323_regulator" },
+	{ .prefix = "ldo", .driver = "mt6323_regulator" },
+	{ }
+};
+
 static const struct pmic_child_info mt6357_pmic_children_info[] = {
 	{ .prefix = "buck", .driver = MT6357_REGULATOR_DRIVER },
 	{ .prefix = "ldo", .driver = MT6357_REGULATOR_DRIVER },
@@ -122,6 +128,23 @@ enum dew_regs {
 	PWRAP_DEW_RG_WDATA_MASK,
 	PWRAP_DEW_RG_SPI_RECORD_CLR,
 	PWRAP_DEW_RG_CMD_ALERT_CLR,
+};
+
+static const u32 mt6323_regs[] = {
+	[PWRAP_DEW_BASE] =		0x0000,
+	[PWRAP_DEW_DIO_EN] =		0x018a,
+	[PWRAP_DEW_READ_TEST] =		0x018c,
+	[PWRAP_DEW_WRITE_TEST] =	0x018e,
+	[PWRAP_DEW_CRC_EN] =		0x0192,
+	[PWRAP_DEW_CRC_VAL] =		0x0194,
+	[PWRAP_DEW_MON_GRP_SEL] =	0x0196,
+	[PWRAP_DEW_CIPHER_KEY_SEL] =	0x0198,
+	[PWRAP_DEW_CIPHER_IV_SEL] =	0x019a,
+	[PWRAP_DEW_CIPHER_EN] =		0x019c,
+	[PWRAP_DEW_CIPHER_RDY] =	0x019e,
+	[PWRAP_DEW_CIPHER_MODE] =	0x01a0,
+	[PWRAP_DEW_CIPHER_SWRST] =	0x01a2,
+	[PWRAP_DEW_RDDMY_NO] =		0x01a4,
 };
 
 static const u32 mt6357_regs[] = {
@@ -240,6 +263,28 @@ enum pwrap_regs {
 	PWRAP_SWINF_2_WDATA_31_0,
 	PWRAP_SWINF_2_RDATA_31_0,
 
+	/* MT8163 only regs */
+	PWRAP_RDDMY,
+	PWRAP_SI_CK_CON,
+	PWRAP_DVFS_ADR0,
+	PWRAP_DVFS_WDATA0,
+	PWRAP_DVFS_ADR1,
+	PWRAP_DVFS_WDATA1,
+	PWRAP_DVFS_ADR2,
+	PWRAP_DVFS_WDATA2,
+	PWRAP_DVFS_ADR3,
+	PWRAP_DVFS_WDATA3,
+	PWRAP_DVFS_ADR4,
+	PWRAP_DVFS_WDATA4,
+	PWRAP_DVFS_ADR5,
+	PWRAP_DVFS_WDATA5,
+	PWRAP_DVFS_ADR6,
+	PWRAP_DVFS_WDATA6,
+	PWRAP_DVFS_ADR7,
+	PWRAP_DVFS_WDATA7,
+	PWRAP_SPMINF_STA,
+	PWRAP_CIPHER_EN,
+
 	/* MT8390 only regs */
 	PWRAP_STAUPD_CTRL,
 
@@ -355,6 +400,88 @@ static int mt8365_regs[] = {
 	[PWRAP_INT1_FLG] =		0xcc,
 	[PWRAP_INT1_CLR] =		0xd0,
 	[PWRAP_WDT_SRC_EN_1] =		0xf8,
+};
+
+static int mt8163_regs[] = {
+	[PWRAP_MUX_SEL] =		0x0,
+	[PWRAP_WRAP_EN] =		0x4,
+	[PWRAP_DIO_EN] =		0x8,
+	[PWRAP_SIDLY] =			0xc,
+	[PWRAP_CSHEXT_WRITE] =		0x18,
+	[PWRAP_CSHEXT_READ] =		0x1c,
+	[PWRAP_CSLEXT_START] =		0x20,
+	[PWRAP_CSLEXT_END] =		0x24,
+	[PWRAP_STAUPD_PRD] =		0x28,
+	[PWRAP_STAUPD_GRPEN] =		0x2c,
+	[PWRAP_STAUPD_MAN_TRIG] =	0x40,
+	[PWRAP_STAUPD_STA] =		0x44,
+	[PWRAP_WRAP_STA] =		0x48,
+	[PWRAP_HARB_INIT] =		0x4c,
+	[PWRAP_HARB_HPRIO] =		0x50,
+	[PWRAP_HIPRIO_ARB_EN] =		0x54,
+	[PWRAP_HARB_STA0] =		0x58,
+	[PWRAP_HARB_STA1] =		0x5c,
+	[PWRAP_MAN_EN] =		0x60,
+	[PWRAP_MAN_CMD] =		0x64,
+	[PWRAP_MAN_RDATA] =		0x68,
+	[PWRAP_MAN_VLDCLR] =		0x6c,
+	[PWRAP_WACS0_EN] =		0x70,
+	[PWRAP_INIT_DONE0] =		0x74,
+	[PWRAP_WACS0_CMD] =		0x78,
+	[PWRAP_WACS0_RDATA] =		0x7c,
+	[PWRAP_WACS0_VLDCLR] =		0x80,
+	[PWRAP_WACS1_EN] =		0x84,
+	[PWRAP_INIT_DONE1] =		0x88,
+	[PWRAP_WACS1_CMD] =		0x8c,
+	[PWRAP_WACS1_RDATA] =		0x90,
+	[PWRAP_WACS1_VLDCLR] =		0x94,
+	[PWRAP_WACS2_EN] =		0x98,
+	[PWRAP_INIT_DONE2] =		0x9c,
+	[PWRAP_WACS2_CMD] =		0xa0,
+	[PWRAP_WACS2_RDATA] =		0xa4,
+	[PWRAP_WACS2_VLDCLR] =		0xa8,
+	[PWRAP_INT_EN] =		0xac,
+	[PWRAP_INT_FLG_RAW] =		0xb0,
+	[PWRAP_INT_FLG] =		0xb4,
+	[PWRAP_INT_CLR] =		0xb8,
+	[PWRAP_SIG_ADR] =		0xbc,
+	[PWRAP_SIG_MODE] =		0xc0,
+	[PWRAP_SIG_VALUE] =		0xc4,
+	[PWRAP_SIG_ERRVAL] =		0xc8,
+	[PWRAP_CRC_EN] =		0xcc,
+	[PWRAP_TIMER_EN] =		0xd0,
+	[PWRAP_TIMER_STA] =		0xd4,
+	[PWRAP_WDT_UNIT] =		0xd8,
+	[PWRAP_WDT_SRC_EN] =		0xdc,
+	[PWRAP_WDT_FLG] =		0xe0,
+	[PWRAP_DEBUG_INT_SEL] =		0xe4,
+	[PWRAP_DVFS_ADR0] =		0xe8,
+	[PWRAP_DVFS_WDATA0] =		0xec,
+	[PWRAP_DVFS_ADR1] =		0xf0,
+	[PWRAP_DVFS_WDATA1] =		0xf4,
+	[PWRAP_DVFS_ADR2] =		0xf8,
+	[PWRAP_DVFS_WDATA2] =		0xfc,
+	[PWRAP_DVFS_ADR3] =		0x100,
+	[PWRAP_DVFS_WDATA3] =		0x104,
+	[PWRAP_DVFS_ADR4] =		0x108,
+	[PWRAP_DVFS_WDATA4] =		0x10c,
+	[PWRAP_DVFS_ADR5] =		0x110,
+	[PWRAP_DVFS_WDATA5] =		0x114,
+	[PWRAP_DVFS_ADR6] =		0x118,
+	[PWRAP_DVFS_WDATA6] =		0x11c,
+	[PWRAP_DVFS_ADR7] =		0x120,
+	[PWRAP_DVFS_WDATA7] =		0x124,
+	[PWRAP_CIPHER_KEY_SEL] =	0x12c,
+	[PWRAP_CIPHER_IV_SEL] =		0x130,
+	[PWRAP_CIPHER_RDY] =		0x138,
+	[PWRAP_CIPHER_MODE] =		0x13c,
+	[PWRAP_CIPHER_SWRST] =		0x140,
+	[PWRAP_DCM_EN] =		0x144,
+	[PWRAP_DCM_DBC_PRD] =		0x148,
+	[PWRAP_RDDMY] =			0x10,
+	[PWRAP_SI_CK_CON] =		0x14,
+	[PWRAP_SPMINF_STA] =		0x128,
+	[PWRAP_CIPHER_EN] =		0x134,
 };
 
 struct pwrap_slv_type {
@@ -647,6 +774,11 @@ static int pwrap_init(struct pmic_wrapper *wrp)
 	return 0;
 }
 
+static const struct pwrap_slv_type pmic_mt6323 = {
+	.dew_regs = mt6323_regs,
+	.caps = PWRAP_SLV_CAP_SPI | PWRAP_SLV_CAP_DUALIO,
+};
+
 static const struct pwrap_slv_type pmic_mt6357 = {
 	.dew_regs = mt6357_regs,
 	.caps = 0,
@@ -658,6 +790,7 @@ static const struct pwrap_slv_type pmic_mt6359 = {
 };
 
 static const struct udevice_id mtk_pmic_ids[] = {
+	{ .compatible = "mediatek,mt6323", .data = (ulong)&pmic_mt6323 },
 	{ .compatible = "mediatek,mt6357", .data = (ulong)&pmic_mt6357 },
 	{ .compatible = "mediatek,mt6359", .data = (ulong)&pmic_mt6359 },
 	{ }
@@ -796,7 +929,9 @@ static int mtk_pwrap_bind(struct udevice *dev)
 		return -ENXIO;
 	}
 
-	if (ofnode_device_is_compatible(pmic_node, "mediatek,mt6357")) {
+	if (ofnode_device_is_compatible(pmic_node, "mediatek,mt6323")) {
+		pmic_children_info = mt6323_pmic_children_info;
+	} else if (ofnode_device_is_compatible(pmic_node, "mediatek,mt6357")) {
 		pmic_children_info = mt6357_pmic_children_info;
 	} else if (ofnode_device_is_compatible(pmic_node, "mediatek,mt6359")) {
 		pmic_children_info = mt6359_pmic_children_info;
@@ -873,6 +1008,14 @@ static const struct pmic_wrapper_type pwrap_mt8195 = {
 	.caps = PWRAP_CAP_ARB,
 };
 
+static const struct pmic_wrapper_type pwrap_mt8163 = {
+	.regs = mt8163_regs,
+	.arb_en_all = 0xff,
+	.spi_w = PWRAP_MAN_CMD_SPI_WRITE,
+	.wdt_src = PWRAP_WDT_SRC_MASK_ALL,
+	.caps = PWRAP_CAP_WDT_SRC,
+};
+
 static const struct pmic_wrapper_type pwrap_mt8365 = {
 	.regs = mt8365_regs,
 	.arb_en_all = 0x3ffff,
@@ -882,6 +1025,7 @@ static const struct pmic_wrapper_type pwrap_mt8365 = {
 };
 
 static const struct udevice_id mtk_pwrap_ids[] = {
+	{ .compatible = "mediatek,mt8163-pwrap", .data = (ulong)&pwrap_mt8163 },
 	{ .compatible = "mediatek,mt8188-pwrap", .data = (ulong)&pwrap_mt8188 },
 	{ .compatible = "mediatek,mt8189-pwrap", .data = (ulong)&pwrap_mt8189 },
 	{ .compatible = "mediatek,mt8195-pwrap", .data = (ulong)&pwrap_mt8195 },
