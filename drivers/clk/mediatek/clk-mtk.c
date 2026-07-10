@@ -229,12 +229,19 @@ static ulong mtk_find_parent_rate(struct mtk_clk_priv *priv, struct clk *clk,
 		}
 		break;
 	case CLK_PARENT_TOPCKGEN:
-		if (dev_get_driver_ops(clk->dev) == &mtk_clk_topckgen_ops)
+		if (dev_get_driver_ops(clk->dev) == &mtk_clk_topckgen_ops) {
 			parent_dev = clk->dev;
-		else if (dev_get_driver_ops(priv->parent) == &mtk_clk_topckgen_ops)
+		} else if (dev_get_driver_ops(priv->parent) == &mtk_clk_topckgen_ops) {
 			parent_dev = priv->parent;
-		else
-			return -EINVAL;
+		} else {
+			/*
+			 * APMIXEDSYS gates might have TOPCKGEN parents, but APMIXEDSYS
+			 * isn't explicitly parented to TOPCKGEN.
+			 */
+			if (uclass_get_device_by_driver(UCLASS_CLK,
+					DM_DRIVER_GET(mtk_clk_topckgen), &parent_dev))
+				return -EINVAL;
+		}
 
 		break;
 	case CLK_PARENT_INFRASYS:
