@@ -9,6 +9,17 @@ config SYS_VENDOR
 choice
 	prompt "MediaTek board select"
 
+config TARGET_MT6572
+	bool "MediaTek MT6572 SoC"
+	select CPU_V7A
+	select MMC_SUPPORTS_TUNING
+	help
+	  The MediaTek MT6572 is a ARM-based SoC with a dual-core Cortex-A7
+	  including NEON and GPU, Mali-400 graphics, LPDDR2/DDR3 options,
+	  crypto engine, built-in Wi-Fi / Bluetooth combo chip.
+	  Peripherals include USB2.0 and OTG, I2S, PCM, UART, SPI, I2C, and
+	  PWM.
+
 config TARGET_MT7622
 	bool "MediaTek MT7622 SoC"
 	select ARM64
@@ -177,6 +188,7 @@ endif
 
 config SYS_BOARD
 	string "Board name"
+	default "mt6572" if TARGET_MT6572
 	default "mt7622" if TARGET_MT7622
 	default "mt7623" if TARGET_MT7623
 	default "mt7629" if TARGET_MT7629
@@ -195,6 +207,7 @@ config SYS_BOARD
 	  be used.
 
 config SYS_CONFIG_NAME
+	default "mt6572" if TARGET_MT6572
 	default "mt7623" if TARGET_MT7623
 	default "mt7629" if TARGET_MT7629
 	default "mt7981" if TARGET_MT7981
