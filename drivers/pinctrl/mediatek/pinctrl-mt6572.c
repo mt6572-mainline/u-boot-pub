@@ -1,0 +1,678 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * The MT6572 driver based on Linux generic pinctrl binding.
+ *
+ */
+#include <dm.h>
+#include "pinctrl-mtk-common.h"
+
+#define PIN_FIELD_BASE(s_pin, e_pin, i_base, s_addr, x_addrs, s_bit, x_bits) \
+	PIN_FIELD_BASE_CALC(s_pin, e_pin, i_base, s_addr, x_addrs, s_bit,    \
+			    x_bits, 32, 0)
+
+#define PINS_FIELD_BASE(s_pin, e_pin, i_base, s_addr, x_addrs, s_bit, x_bits) \
+	PIN_FIELD_BASE_CALC(s_pin, e_pin, i_base, s_addr, x_addrs, s_bit,     \
+			    x_bits, 32, 1)
+
+#define MT6572_REGULAR_PIN(_number, _name, _drv) \
+	MTK_TYPED_PIN(_number, _name, _drv, IO_TYPE_GRP0)
+
+#define MT6572_MSDC0_PIN(_number, _name, _drv) \
+	MTK_TYPED_PIN(_number, _name, _drv, IO_TYPE_GRP1)
+
+#define IS_MSDC0_RANGE(p) ((p) >= 44 && (p) <= 53)
+
+static const struct mtk_pin_field_calc mt6572_pin_mode_range[] = {
+	PIN_FIELD_BASE(0, 7, 0, 0x0300, 0x10, 0, 4),
+	PIN_FIELD_BASE(8, 15, 0, 0x0310, 0x10, 0, 4),
+	PIN_FIELD_BASE(16, 23, 0, 0x0320, 0x10, 0, 4),
+	PIN_FIELD_BASE(24, 31, 0, 0x0330, 0x10, 0, 4),
+	PIN_FIELD_BASE(32, 39, 0, 0x0340, 0x10, 0, 4),
+	PIN_FIELD_BASE(40, 47, 0, 0x0350, 0x10, 0, 4),
+	PIN_FIELD_BASE(48, 55, 0, 0x0360, 0x10, 0, 4),
+	PIN_FIELD_BASE(56, 63, 0, 0x0370, 0x10, 0, 4),
+	PIN_FIELD_BASE(64, 71, 0, 0x0380, 0x10, 0, 4),
+	PIN_FIELD_BASE(72, 79, 0, 0x0390, 0x10, 0, 4),
+	PIN_FIELD_BASE(80, 87, 0, 0x03A0, 0x10, 0, 4),
+	PIN_FIELD_BASE(88, 95, 0, 0x03B0, 0x10, 0, 4),
+	PIN_FIELD_BASE(96, 103, 0, 0x03C0, 0x10, 0, 4),
+	PIN_FIELD_BASE(104, 111, 0, 0x03D0, 0x10, 0, 4),
+	PIN_FIELD_BASE(112, 119, 0, 0x03E0, 0x10, 0, 4),
+	PIN_FIELD_BASE(120, 127, 0, 0x03F0, 0x10, 0, 4),
+	PIN_FIELD_BASE(128, 135, 0, 0x0400, 0x10, 0, 4),
+	PIN_FIELD_BASE(136, 143, 0, 0x0410, 0x10, 0, 4),
+	PIN_FIELD_BASE(144, 151, 0, 0x0420, 0x10, 0, 4),
+	PIN_FIELD_BASE(152, 153, 0, 0x0430, 0x10, 0, 4),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_dir_range[] = {
+	PIN_FIELD_BASE(0, 31, 0, 0x0000, 0x10, 0, 1),
+	PIN_FIELD_BASE(32, 63, 0, 0x0010, 0x10, 0, 1),
+	PIN_FIELD_BASE(64, 95, 0, 0x0020, 0x10, 0, 1),
+	PIN_FIELD_BASE(96, 127, 0, 0x0030, 0x10, 0, 1),
+	PIN_FIELD_BASE(128, 153, 0, 0x0040, 0x10, 0, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_di_range[] = {
+	PIN_FIELD_BASE(0, 31, 0, 0x0200, 0x10, 0, 1),
+	PIN_FIELD_BASE(32, 63, 0, 0x0210, 0x10, 0, 1),
+	PIN_FIELD_BASE(64, 95, 0, 0x0220, 0x10, 0, 1),
+	PIN_FIELD_BASE(96, 127, 0, 0x0230, 0x10, 0, 1),
+	PIN_FIELD_BASE(128, 153, 0, 0x0240, 0x10, 0, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_do_range[] = {
+	PIN_FIELD_BASE(0, 31, 0, 0x0100, 0x10, 0, 1),
+	PIN_FIELD_BASE(32, 63, 0, 0x0110, 0x10, 0, 1),
+	PIN_FIELD_BASE(64, 95, 0, 0x0120, 0x10, 0, 1),
+	PIN_FIELD_BASE(96, 127, 0, 0x0130, 0x10, 0, 1),
+	PIN_FIELD_BASE(128, 153, 0, 0x0140, 0x10, 0, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_ies_range[] = {
+	/* SIM2 */
+	PINS_FIELD_BASE(0, 1, 3, 0x0000, 0x10, 0, 1),
+	/* SIM1 */
+	PINS_FIELD_BASE(2, 3, 3, 0x0000, 0x10, 1, 1),
+	/* Audio */
+	PINS_FIELD_BASE(4, 6, 3, 0x0000, 0x10, 2, 1),
+	/* PMIC EINT */
+	PINS_FIELD_BASE(7, 7, 3, 0x0000, 0x10, 4, 1),
+	/* PMIC SPI */
+	PINS_FIELD_BASE(8, 11, 3, 0x0000, 0x10, 3, 1),
+	/* SRCLKENA, WATCHDOG */
+	PINS_FIELD_BASE(12, 13, 3, 0x0000, 0x10, 4, 1),
+	/* LPD */
+	PINS_FIELD_BASE(14, 31, 3, 0x0000, 0x10, 5, 1),
+	/* NFI0~7 */
+	PINS_FIELD_BASE(32, 39, 3, 0x0000, 0x10, 6, 1),
+
+	/* NFI8~11 */
+	PINS_FIELD_BASE(40, 43, 2, 0x0000, 0x10, 2, 1),
+	/* NFI12~21: MSDC0 CLK & CMD & DAT0~7 */
+	PINS_FIELD_BASE(44, 49, 2, 0x0000, 0x10, 0, 1),
+	PINS_FIELD_BASE(50, 53, 2, 0x0000, 0x10, 1, 1),
+	/* NFI22: MSDC0 RSTB */
+	PINS_FIELD_BASE(54, 54, 2, 0x0000, 0x10, 0, 1),
+
+	/* LCD */
+	PINS_FIELD_BASE(55, 58, 4, 0x0000, 0x10, 0, 1),
+	/* Camera */
+	PINS_FIELD_BASE(59, 60, 4, 0x0000, 0x10, 1, 1),
+	PINS_FIELD_BASE(61, 62, 4, 0x0000, 0x10, 2, 1),
+	PINS_FIELD_BASE(63, 66, 4, 0x0000, 0x10, 3, 1),
+	/* MIPI */
+	PINS_FIELD_BASE(87, 88, 4, 0x0000, 0x10, 4, 1),
+	PINS_FIELD_BASE(89, 90, 4, 0x0000, 0x10, 5, 1),
+	/* MSDC1 */
+	PINS_FIELD_BASE(91, 96, 4, 0x0000, 0x10, 6, 1),
+	/* SPI, UART1 */
+	PIN_FIELD_BASE(97, 102, 4, 0x0000, 0x10, 7, 1),
+	/* UART0 */
+	PINS_FIELD_BASE(103, 104, 4, 0x0000, 0x10, 13, 1),
+	/* I2C0 */
+	PINS_FIELD_BASE(105, 106, 4, 0x0000, 0x10, 14, 1),
+
+	/* Keypad */
+	PIN_FIELD_BASE(107, 112, 1, 0x0000, 0x10, 0, 1),
+	/* I2C1 */
+	PINS_FIELD_BASE(113, 114, 1, 0x0000, 0x10, 6, 1),
+	/* CONN */
+	PINS_FIELD_BASE(115, 120, 1, 0x0010, 0x10, 0, 1),
+	PINS_FIELD_BASE(121, 124, 1, 0x0010, 0x10, 1, 1),
+	PINS_FIELD_BASE(126, 127, 1, 0x0010, 0x10, 2, 1),
+	/* PWM */
+	PIN_FIELD_BASE(128, 129, 1, 0x0000, 0x10, 13, 1),
+	/* BPI_BUS0~15 */
+	PINS_FIELD_BASE(130, 133, 1, 0x0000, 0x10, 7, 1),
+	PINS_FIELD_BASE(134, 136, 1, 0x0000, 0x10, 8, 1),
+	PINS_FIELD_BASE(137, 141, 1, 0x0000, 0x10, 9, 1),
+	PINS_FIELD_BASE(142, 145, 1, 0x0000, 0x10, 10, 1),
+	/* TXBPI, VM0~1 */
+	PINS_FIELD_BASE(146, 148, 1, 0x0000, 0x10, 11, 1),
+	/* BSI */
+	PINS_FIELD_BASE(149, 153, 1, 0x0000, 0x10, 12, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_smt_range[] = {
+	/* SIM2 */
+	PINS_FIELD_BASE(0, 1, 3, 0x0020, 0x10, 0, 1),
+	/* SIM1 */
+	PINS_FIELD_BASE(2, 3, 3, 0x0020, 0x10, 1, 1),
+	/* Audio */
+	PINS_FIELD_BASE(4, 6, 3, 0x0020, 0x10, 2, 1),
+	/* PMIC EINT */
+	PINS_FIELD_BASE(7, 7, 3, 0x0020, 0x10, 4, 1),
+	/* PMIC SPI */
+	PINS_FIELD_BASE(8, 11, 3, 0x0020, 0x10, 3, 1),
+	/* SRCLKENA, WATCHDOG */
+	PINS_FIELD_BASE(12, 13, 3, 0x0020, 0x10, 4, 1),
+	/* LPD */
+	PINS_FIELD_BASE(14, 31, 3, 0x0020, 0x10, 5, 1),
+	/* NFI0~7 */
+	PINS_FIELD_BASE(32, 39, 3, 0x0020, 0x10, 6, 1),
+
+	/* NFI8~11 */
+	PINS_FIELD_BASE(40, 43, 2, 0x0020, 0x10, 2, 1),
+	/* NFI12~21: MSDC0 CLK & CMD & DAT0~7 */
+	PINS_FIELD_BASE(44, 49, 2, 0x0020, 0x10, 0, 1),
+	PINS_FIELD_BASE(50, 53, 2, 0x0020, 0x10, 1, 1),
+	/* NFI22: MSDC0 RSTB */
+	PINS_FIELD_BASE(54, 54, 2, 0x0020, 0x10, 0, 1),
+
+	/* LCD */
+	PINS_FIELD_BASE(55, 58, 4, 0x0020, 0x10, 0, 1),
+	/* Camera */
+	PINS_FIELD_BASE(59, 60, 4, 0x0020, 0x10, 1, 1),
+	PINS_FIELD_BASE(61, 62, 4, 0x0020, 0x10, 2, 1),
+	PINS_FIELD_BASE(63, 66, 4, 0x0020, 0x10, 3, 1),
+	/* MIPI */
+	PINS_FIELD_BASE(87, 88, 4, 0x0020, 0x10, 4, 1),
+	PINS_FIELD_BASE(89, 90, 4, 0x0020, 0x10, 5, 1),
+	/* MSDC1 */
+	PINS_FIELD_BASE(91, 96, 4, 0x0020, 0x10, 6, 1),
+	/* SPI, UART1 */
+	PIN_FIELD_BASE(97, 102, 4, 0x0020, 0x10, 7, 1),
+	/* UART0 */
+	PINS_FIELD_BASE(103, 104, 4, 0x0020, 0x10, 13, 1),
+	/* I2C0 */
+	PINS_FIELD_BASE(105, 106, 4, 0x0020, 0x10, 14, 1),
+
+	/* Keypad */
+	PINS_FIELD_BASE(107, 112, 1, 0x0040, 0x10, 0, 1),
+	/* I2C1 */
+	PINS_FIELD_BASE(113, 114, 1, 0x0040, 0x10, 6, 1),
+	/* CONN */
+	PINS_FIELD_BASE(115, 120, 1, 0x0050, 0x10, 0, 1),
+	PINS_FIELD_BASE(121, 124, 1, 0x0050, 0x10, 1, 1),
+	PINS_FIELD_BASE(126, 127, 1, 0x0050, 0x10, 2, 1),
+	/* PWM */
+	PIN_FIELD_BASE(128, 129, 1, 0x0040, 0x10, 8, 1),
+	/* BPI_BUS0~15 */
+	PINS_FIELD_BASE(130, 133, 1, 0x0040, 0x10, 2, 1),
+	PINS_FIELD_BASE(134, 136, 1, 0x0040, 0x10, 3, 1),
+	PINS_FIELD_BASE(137, 141, 1, 0x0040, 0x10, 4, 1),
+	PINS_FIELD_BASE(142, 145, 1, 0x0040, 0x10, 5, 1),
+	/* TXBPI, VM0~1 */
+	PINS_FIELD_BASE(146, 148, 1, 0x0040, 0x10, 6, 1),
+	/* BSI */
+	PINS_FIELD_BASE(149, 153, 1, 0x0040, 0x10, 7, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_pullen_range[] = {
+	/* SIM2, SIM1, Audio */
+	PIN_FIELD_BASE(0, 6, 3, 0x0040, 0x10, 0, 1),
+	/* PMIC EINT */
+	PIN_FIELD_BASE(7, 7, 3, 0x0040, 0x10, 11, 1),
+	/* PMIC SPI */
+	PIN_FIELD_BASE(8, 11, 3, 0x0040, 0x10, 7, 1),
+	/* SRCLKENA, WATCHDOG */
+	PIN_FIELD_BASE(12, 13, 3, 0x0040, 0x10, 12, 1),
+	/* LPD, NFI0~7 */
+	PIN_FIELD_BASE(14, 39, 3, 0x0050, 0x10, 0, 1),
+
+	/* NFI8~11 */
+	PIN_FIELD_BASE(40, 43, 2, 0x0040, 0x10, 21, 1),
+	/* NFI22: MSDC0 RSTB */
+	PIN_FIELD_BASE(54, 54, 2, 0x0040, 0x10, 20, 1),
+
+	/* LCD, Camera */
+	PIN_FIELD_BASE(55, 66, 4, 0x0040, 0x10, 0, 1),
+	/* MIPI, Camera, MSDC1, SPI, UART0, UART1, I2C0 */
+	PIN_FIELD_BASE(87, 106, 4, 0x0040, 0x10, 12, 1),
+
+	/* Keypad, I2C1 */
+	PIN_FIELD_BASE(107, 114, 1, 0x0070, 0x10, 0, 1),
+	/* CONN */
+	PIN_FIELD_BASE(115, 127, 1, 0x0090, 0x10, 0, 1),
+	/* PWM */
+	PIN_FIELD_BASE(128, 129, 1, 0x0080, 0x10, 0, 1),
+	/* BPI_BUS0~15, TXBPI, VM0~1, BSI */
+	PIN_FIELD_BASE(130, 153, 1, 0x0070, 0x10, 8, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_pullsel_range[] = {
+	/* SIM2, SIM1, Audio */
+	PIN_FIELD_BASE(0, 6, 3, 0x0060, 0x10, 0, 1),
+	/* PMIC EINT */
+	PIN_FIELD_BASE(7, 7, 3, 0x0060, 0x10, 11, 1),
+	/* PMIC SPI */
+	PIN_FIELD_BASE(8, 11, 3, 0x0060, 0x10, 7, 1),
+	/* SRCLKENA, WATCHDOG */
+	PIN_FIELD_BASE(12, 13, 3, 0x0060, 0x10, 12, 1),
+	/* LPD, NFI0~7 */
+	PIN_FIELD_BASE(14, 39, 3, 0x0070, 0x10, 0, 1),
+
+	/* NFI8~11 */
+	PIN_FIELD_BASE(40, 43, 2, 0x0050, 0x10, 21, 1),
+	/* NFI12~22: MSDC0 CLK & CMD & DAT0~7 & RSTB */
+	PIN_FIELD_BASE(44, 54, 2, 0x0050, 0x10, 0, 1),
+
+	/* LCD, Camera */
+	PIN_FIELD_BASE(55, 66, 4, 0x0050, 0x10, 0, 1),
+	/* MIPI, Camera, MSDC1, SPI, UART0, UART1 */
+	PIN_FIELD_BASE(87, 104, 4, 0x0050, 0x10, 12, 1),
+
+	/* Keypad */
+	PIN_FIELD_BASE(107, 112, 1, 0x00A0, 0x10, 0, 1),
+	/* CONN */
+	PIN_FIELD_BASE(115, 127, 1, 0x00C0, 0x10, 0, 1),
+	/* PWM */
+	PIN_FIELD_BASE(128, 129, 1, 0x00B0, 0x10, 0, 1),
+	/* BPI_BUS0~15, TXBPI, VM0~1 */
+	PIN_FIELD_BASE(130, 148, 1, 0x00A0, 0x10, 8, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_tdsel_range[] = {
+	/* Left iocfg */
+	PINS_FIELD_BASE(0, 39, 3, 0x0030, 0x4, 0, 3),
+
+	/* NFI8~11 */
+	PINS_FIELD_BASE(40, 43, 2, 0x0030, 0x4, 0, 4),
+	/* NFI12~21: MSDC0 CLK & CMD & DAT0~7 */
+	PINS_FIELD_BASE(44, 53, 2, 0x0030, 0x4, 4, 4),
+	/* NFI22: MSDC0 RSTB */
+	PINS_FIELD_BASE(54, 54, 2, 0x0030, 0x4, 0, 4),
+
+	/* LCD */
+	PINS_FIELD_BASE(55, 60, 4, 0x0030, 0x4, 0, 4),
+	/* Camera */
+	PINS_FIELD_BASE(61, 72, 4, 0x0030, 0x4, 4, 4),
+	/* MSDC1 */
+	PINS_FIELD_BASE(91, 96, 4, 0x0030, 0x4, 8, 4),
+	/* SPI, UART0, UART1, I2C0 */
+	PINS_FIELD_BASE(97, 106, 4, 0x0030, 0x4, 4, 4),
+
+	/* Keypad, I2C1, CONN, PWM */
+	PINS_FIELD_BASE(107, 129, 1, 0x0060, 0x4, 0, 4),
+	/* BPI_BUS0~6 */
+	PINS_FIELD_BASE(130, 136, 1, 0x0060, 0x4, 4, 4),
+	/* BPI_BUS7~15, TXBPI, VM0~1, BSI */
+	PINS_FIELD_BASE(137, 153, 1, 0x0060, 0x4, 0, 4),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_rdsel_range[] = {
+	/* Left iocfg */
+	PINS_FIELD_BASE(0, 39, 3, 0x0034, 0x4, 0, 3),
+
+	/* NFI8~11 */
+	PINS_FIELD_BASE(40, 43, 2, 0x0034, 0x4, 0, 2),
+	/* NFI12~21: MSDC0 CLK & CMD & DAT0~7 */
+	PINS_FIELD_BASE(44, 53, 2, 0x0034, 0x4, 2, 6),
+	/* NFI22: MSDC0 RSTB */
+	PINS_FIELD_BASE(54, 54, 2, 0x0034, 0x4, 0, 2),
+
+	/* LCD */
+	PINS_FIELD_BASE(55, 60, 4, 0x0034, 0x4, 0, 5),
+
+	/* Keypad, I2C1, CONN, PWM */
+	PINS_FIELD_BASE(107, 129, 1, 0x0064, 0x4, 0, 1),
+	/* BPI_BUS0~6 */
+	PINS_FIELD_BASE(130, 136, 1, 0x0064, 0x4, 2, 6),
+	/* BPI_BUS7~15, TXBPI, VM0~1, BSI */
+	PINS_FIELD_BASE(137, 153, 1, 0x0064, 0x4, 0, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_drv_range[] = {
+	/* SIM2: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(0, 1, 3, 0x0080, 0x10, 0, 2),
+	/* SIM1: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(2, 3, 3, 0x0080, 0x10, 2, 2),
+	/* Audio: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(4, 6, 3, 0x0080, 0x10, 4, 2),
+	/* PMIC SPI: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(8, 11, 3, 0x0080, 0x10, 6, 2),
+	/* PMIC EINT: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(7, 7, 3, 0x0080, 0x10, 8, 2),
+	/* SRCLKENA, WATCHDOG: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(12, 13, 3, 0x0080, 0x10, 8, 2),
+	/* LPD: 4~16 mA in 4 mA step */
+	PINS_FIELD_BASE(14, 31, 3, 0x0080, 0x10, 10, 2),
+	/* NFI0~7: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(32, 39, 3, 0x0080, 0x10, 12, 2),
+
+	/* NFI8~11: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(40, 43, 2, 0x0060, 0x10, 8, 2),
+	/* NFI12~17: MSDC0 CLK & CMD & DAT0~3: 2~16 mA in 2 mA step */
+	PINS_FIELD_BASE(44, 49, 2, 0x0060, 0x10, 0, 3),
+	/* NFI18~21: MSDC0 DAT4~7: 2~16 mA in 2 mA step */
+	PINS_FIELD_BASE(50, 53, 2, 0x0060, 0x10, 3, 3),
+	/* NFI22: MSDC0 RSTB: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(54, 54, 2, 0x0060, 0x10, 6, 2),
+
+	/* LCD: 4~32 mA in 4 mA step */
+	PINS_FIELD_BASE(55, 60, 4, 0x0060, 0x10, 0, 3),
+	/* Camera, MIPI: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(61, 66, 4, 0x0060, 0x10, 4, 2),
+	PINS_FIELD_BASE(87, 88, 4, 0x0060, 0x10, 6, 2),
+	PINS_FIELD_BASE(89, 90, 4, 0x0060, 0x10, 8, 2),
+	/* MSDC1: 4~32 mA in 4 mA step */
+	PINS_FIELD_BASE(91, 96, 4, 0x0060, 0x10, 10, 3),
+	/* SPI: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(97, 100, 4, 0x0060, 0x10, 14, 2),
+	/* UART1: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(101, 102, 4, 0x0060, 0x10, 16, 2),
+	/* UART0: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(103, 104, 4, 0x0060, 0x10, 18, 2),
+
+	/* Keypad: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(107, 112, 1, 0x00D0, 0x04, 0, 2),
+	PINS_FIELD_BASE(115, 120, 1, 0x00D4, 0x04, 0, 2),
+	PINS_FIELD_BASE(121, 124, 1, 0x00D4, 0x04, 2, 2),
+	PINS_FIELD_BASE(126, 127, 1, 0x00D4, 0x04, 4, 2),
+	/* PWM: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(128, 129, 1, 0x00D0, 0x04, 14, 2),
+	/* BPI_BUS0~6: 4~16 mA in 4 mA step */
+	PINS_FIELD_BASE(130, 133, 1, 0x00D0, 0x04, 2, 2),
+	PINS_FIELD_BASE(134, 136, 1, 0x00D0, 0x04, 4, 2),
+	/* BPI_BUS7~15, TXBPI, VM0~1: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(137, 141, 1, 0x00D0, 0x04, 6, 2),
+	PINS_FIELD_BASE(142, 145, 1, 0x00D0, 0x04, 8, 2),
+	PINS_FIELD_BASE(146, 148, 1, 0x00D0, 0x04, 10, 2),
+	/* BSI: 2~8 mA in 2 mA step */
+	PINS_FIELD_BASE(149, 153, 1, 0x00D0, 0x04, 12, 2),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_r0_range[] = {
+	/* NFI12~21: MSDC0 CLK & CMD & DAT0~7 */
+	PIN_FIELD_BASE(44, 44, 2, 0x0040, 0x10, 0, 1),
+	PIN_FIELD_BASE(45, 45, 2, 0x0040, 0x10, 2, 1),
+	PIN_FIELD_BASE(46, 46, 2, 0x0040, 0x10, 4, 1),
+	PIN_FIELD_BASE(47, 47, 2, 0x0040, 0x10, 6, 1),
+	PIN_FIELD_BASE(48, 48, 2, 0x0040, 0x10, 8, 1),
+	PIN_FIELD_BASE(49, 49, 2, 0x0040, 0x10, 10, 1),
+	PIN_FIELD_BASE(50, 50, 2, 0x0040, 0x10, 12, 1),
+	PIN_FIELD_BASE(51, 51, 2, 0x0040, 0x10, 14, 1),
+	PIN_FIELD_BASE(52, 52, 2, 0x0040, 0x10, 16, 1),
+	PIN_FIELD_BASE(53, 53, 2, 0x0040, 0x10, 18, 1),
+};
+
+static const struct mtk_pin_field_calc mt6572_pin_r1_range[] = {
+	/* NFI12~21: MSDC0 CLK & CMD & DAT0~7 */
+	PIN_FIELD_BASE(44, 44, 2, 0x0040, 0x10, 1, 1),
+	PIN_FIELD_BASE(45, 45, 2, 0x0040, 0x10, 3, 1),
+	PIN_FIELD_BASE(46, 46, 2, 0x0040, 0x10, 5, 1),
+	PIN_FIELD_BASE(47, 47, 2, 0x0040, 0x10, 7, 1),
+	PIN_FIELD_BASE(48, 48, 2, 0x0040, 0x10, 9, 1),
+	PIN_FIELD_BASE(49, 49, 2, 0x0040, 0x10, 11, 1),
+	PIN_FIELD_BASE(50, 50, 2, 0x0040, 0x10, 13, 1),
+	PIN_FIELD_BASE(51, 51, 2, 0x0040, 0x10, 15, 1),
+	PIN_FIELD_BASE(52, 52, 2, 0x0040, 0x10, 17, 1),
+	PIN_FIELD_BASE(53, 53, 2, 0x0040, 0x10, 19, 1),
+};
+
+static const struct mtk_pin_reg_calc mt6572_reg_cals[PINCTRL_PIN_REG_MAX] = {
+	[PINCTRL_PIN_REG_MODE] = MTK_RANGE(mt6572_pin_mode_range),
+	[PINCTRL_PIN_REG_DIR] = MTK_RANGE(mt6572_pin_dir_range),
+	[PINCTRL_PIN_REG_DI] = MTK_RANGE(mt6572_pin_di_range),
+	[PINCTRL_PIN_REG_DO] = MTK_RANGE(mt6572_pin_do_range),
+	[PINCTRL_PIN_REG_SMT] = MTK_RANGE(mt6572_pin_smt_range),
+	[PINCTRL_PIN_REG_IES] = MTK_RANGE(mt6572_pin_ies_range),
+	[PINCTRL_PIN_REG_PULLEN] = MTK_RANGE(mt6572_pin_pullen_range),
+	[PINCTRL_PIN_REG_PULLSEL] = MTK_RANGE(mt6572_pin_pullsel_range),
+	[PINCTRL_PIN_REG_DRV] = MTK_RANGE(mt6572_pin_drv_range),
+	[PINCTRL_PIN_REG_R0] = MTK_RANGE(mt6572_pin_r0_range),
+	[PINCTRL_PIN_REG_R1] = MTK_RANGE(mt6572_pin_r1_range),
+};
+
+
+static const struct mtk_pin_desc mt6572_pins[] = {
+	MT6572_REGULAR_PIN(0, "GPIO0", DRV_GRP2),
+	MT6572_REGULAR_PIN(1, "GPIO1", DRV_GRP2),
+	MT6572_REGULAR_PIN(2, "GPIO2", DRV_GRP2),
+	MT6572_REGULAR_PIN(3, "GPIO3", DRV_GRP2),
+	MT6572_REGULAR_PIN(4, "GPIO4", DRV_GRP2),
+	MT6572_REGULAR_PIN(5, "GPIO5", DRV_GRP2),
+	MT6572_REGULAR_PIN(6, "GPIO6", DRV_GRP2),
+	MT6572_REGULAR_PIN(7, "GPIO7", DRV_GRP2),
+	MT6572_REGULAR_PIN(8, "GPIO8", DRV_GRP2),
+	MT6572_REGULAR_PIN(9, "GPIO9", DRV_GRP2),
+	MT6572_REGULAR_PIN(10, "GPIO10", DRV_GRP2),
+	MT6572_REGULAR_PIN(11, "GPIO11", DRV_GRP2),
+	MT6572_REGULAR_PIN(12, "GPIO12", DRV_GRP2),
+	MT6572_REGULAR_PIN(13, "GPIO13", DRV_GRP2),
+	MT6572_REGULAR_PIN(14, "GPIO14", DRV_GRP0),
+	MT6572_REGULAR_PIN(15, "GPIO15", DRV_GRP0),
+	MT6572_REGULAR_PIN(16, "GPIO16", DRV_GRP0),
+	MT6572_REGULAR_PIN(17, "GPIO17", DRV_GRP0),
+	MT6572_REGULAR_PIN(18, "GPIO18", DRV_GRP0),
+	MT6572_REGULAR_PIN(19, "GPIO19", DRV_GRP0),
+	MT6572_REGULAR_PIN(20, "GPIO20", DRV_GRP0),
+	MT6572_REGULAR_PIN(21, "GPIO21", DRV_GRP0),
+	MT6572_REGULAR_PIN(22, "GPIO22", DRV_GRP0),
+	MT6572_REGULAR_PIN(23, "GPIO23", DRV_GRP0),
+	MT6572_REGULAR_PIN(24, "GPIO24", DRV_GRP0),
+	MT6572_REGULAR_PIN(25, "GPIO25", DRV_GRP0),
+	MT6572_REGULAR_PIN(26, "GPIO26", DRV_GRP0),
+	MT6572_REGULAR_PIN(27, "GPIO27", DRV_GRP0),
+	MT6572_REGULAR_PIN(28, "GPIO28", DRV_GRP0),
+	MT6572_REGULAR_PIN(29, "GPIO29", DRV_GRP0),
+	MT6572_REGULAR_PIN(30, "GPIO30", DRV_GRP0),
+	MT6572_REGULAR_PIN(31, "GPIO31", DRV_GRP0),
+	MT6572_REGULAR_PIN(32, "GPIO32", DRV_GRP0),
+	MT6572_REGULAR_PIN(33, "GPIO33", DRV_GRP0),
+	MT6572_REGULAR_PIN(34, "GPIO34", DRV_GRP0),
+	MT6572_REGULAR_PIN(35, "GPIO35", DRV_GRP0),
+	MT6572_REGULAR_PIN(36, "GPIO36", DRV_GRP0),
+	MT6572_REGULAR_PIN(37, "GPIO37", DRV_GRP0),
+	MT6572_REGULAR_PIN(38, "GPIO38", DRV_GRP0),
+	MT6572_REGULAR_PIN(39, "GPIO39", DRV_GRP0),
+	MT6572_REGULAR_PIN(40, "GPIO40", DRV_GRP2),
+	MT6572_REGULAR_PIN(41, "GPIO41", DRV_GRP2),
+	MT6572_REGULAR_PIN(42, "GPIO42", DRV_GRP2),
+	MT6572_REGULAR_PIN(43, "GPIO43", DRV_GRP2),
+	MT6572_MSDC0_PIN(44, "GPIO44", DRV_GRP4),
+	MT6572_MSDC0_PIN(45, "GPIO45", DRV_GRP4),
+	MT6572_MSDC0_PIN(46, "GPIO46", DRV_GRP4),
+	MT6572_MSDC0_PIN(47, "GPIO47", DRV_GRP4),
+	MT6572_MSDC0_PIN(48, "GPIO48", DRV_GRP4),
+	MT6572_MSDC0_PIN(49, "GPIO49", DRV_GRP4),
+	MT6572_MSDC0_PIN(50, "GPIO50", DRV_GRP4),
+	MT6572_MSDC0_PIN(51, "GPIO51", DRV_GRP4),
+	MT6572_MSDC0_PIN(52, "GPIO52", DRV_GRP4),
+	MT6572_MSDC0_PIN(53, "GPIO53", DRV_GRP4),
+	MT6572_REGULAR_PIN(54, "GPIO54", DRV_GRP2),
+	MT6572_REGULAR_PIN(55, "GPIO55", DRV_GRP5),
+	MT6572_REGULAR_PIN(56, "GPIO56", DRV_GRP5),
+	MT6572_REGULAR_PIN(57, "GPIO57", DRV_GRP5),
+	MT6572_REGULAR_PIN(58, "GPIO58", DRV_GRP5),
+	MT6572_REGULAR_PIN(59, "GPIO59", DRV_GRP5),
+	MT6572_REGULAR_PIN(60, "GPIO60", DRV_GRP5),
+	MT6572_REGULAR_PIN(61, "GPIO61", DRV_GRP4),
+	MT6572_REGULAR_PIN(62, "GPIO62", DRV_GRP4),
+	MT6572_REGULAR_PIN(63, "GPIO63", DRV_GRP4),
+	MT6572_REGULAR_PIN(64, "GPIO64", DRV_GRP4),
+	MT6572_REGULAR_PIN(65, "GPIO65", DRV_GRP4),
+	MT6572_REGULAR_PIN(66, "GPIO66", DRV_GRP4),
+	MT6572_REGULAR_PIN(67, "GPIO67", DRV_GRP4),
+	MT6572_REGULAR_PIN(68, "GPIO68", DRV_GRP4),
+	MT6572_REGULAR_PIN(69, "GPIO69", DRV_GRP4),
+	MT6572_REGULAR_PIN(70, "GPIO70", DRV_GRP4),
+	MT6572_REGULAR_PIN(71, "GPIO71", DRV_GRP4),
+	MT6572_REGULAR_PIN(72, "GPIO72", DRV_GRP4),
+	MT6572_REGULAR_PIN(73, "GPIO73", DRV_GRP4),
+	MT6572_REGULAR_PIN(74, "GPIO74", DRV_GRP4),
+	MT6572_REGULAR_PIN(75, "GPIO75", DRV_GRP4),
+	MT6572_REGULAR_PIN(76, "GPIO76", DRV_GRP4),
+	MT6572_REGULAR_PIN(77, "GPIO77", DRV_GRP4),
+	MT6572_REGULAR_PIN(78, "GPIO78", DRV_GRP4),
+	MT6572_REGULAR_PIN(79, "GPIO79", DRV_GRP4),
+	MT6572_REGULAR_PIN(80, "GPIO80", DRV_GRP4),
+	MT6572_REGULAR_PIN(81, "GPIO81", DRV_GRP4),
+	MT6572_REGULAR_PIN(82, "GPIO82", DRV_GRP4),
+	MT6572_REGULAR_PIN(83, "GPIO83", DRV_GRP4),
+	MT6572_REGULAR_PIN(84, "GPIO84", DRV_GRP4),
+	MT6572_REGULAR_PIN(85, "GPIO85", DRV_GRP4),
+	MT6572_REGULAR_PIN(86, "GPIO86", DRV_GRP4),
+	MT6572_REGULAR_PIN(87, "GPIO87", DRV_GRP2),
+	MT6572_REGULAR_PIN(88, "GPIO88", DRV_GRP2),
+	MT6572_REGULAR_PIN(89, "GPIO89", DRV_GRP2),
+	MT6572_REGULAR_PIN(90, "GPIO90", DRV_GRP2),
+	MT6572_REGULAR_PIN(91, "GPIO91", DRV_GRP5),
+	MT6572_REGULAR_PIN(92, "GPIO92", DRV_GRP5),
+	MT6572_REGULAR_PIN(93, "GPIO93", DRV_GRP5),
+	MT6572_REGULAR_PIN(94, "GPIO94", DRV_GRP5),
+	MT6572_REGULAR_PIN(95, "GPIO95", DRV_GRP5),
+	MT6572_REGULAR_PIN(96, "GPIO96", DRV_GRP5),
+	MT6572_REGULAR_PIN(97, "GPIO97", DRV_GRP2),
+	MT6572_REGULAR_PIN(98, "GPIO98", DRV_GRP2),
+	MT6572_REGULAR_PIN(99, "GPIO99", DRV_GRP2),
+	MT6572_REGULAR_PIN(100, "GPIO100", DRV_GRP2),
+	MT6572_REGULAR_PIN(101, "GPIO101", DRV_GRP2),
+	MT6572_REGULAR_PIN(102, "GPIO102", DRV_GRP2),
+	MT6572_REGULAR_PIN(103, "GPIO103", DRV_GRP2),
+	MT6572_REGULAR_PIN(104, "GPIO104", DRV_GRP2),
+	MT6572_REGULAR_PIN(105, "GPIO105", DRV_GRP0),
+	MT6572_REGULAR_PIN(106, "GPIO106", DRV_GRP0),
+	MT6572_REGULAR_PIN(107, "GPIO107", DRV_GRP2),
+	MT6572_REGULAR_PIN(108, "GPIO108", DRV_GRP2),
+	MT6572_REGULAR_PIN(109, "GPIO109", DRV_GRP2),
+	MT6572_REGULAR_PIN(110, "GPIO110", DRV_GRP2),
+	MT6572_REGULAR_PIN(111, "GPIO111", DRV_GRP2),
+	MT6572_REGULAR_PIN(112, "GPIO112", DRV_GRP2),
+	MT6572_REGULAR_PIN(113, "GPIO113", DRV_GRP0),
+	MT6572_REGULAR_PIN(114, "GPIO114", DRV_GRP0),
+	MT6572_REGULAR_PIN(115, "GPIO115", DRV_GRP2),
+	MT6572_REGULAR_PIN(116, "GPIO116", DRV_GRP2),
+	MT6572_REGULAR_PIN(117, "GPIO117", DRV_GRP2),
+	MT6572_REGULAR_PIN(118, "GPIO118", DRV_GRP2),
+	MT6572_REGULAR_PIN(119, "GPIO119", DRV_GRP2),
+	MT6572_REGULAR_PIN(120, "GPIO120", DRV_GRP2),
+	MT6572_REGULAR_PIN(121, "GPIO121", DRV_GRP2),
+	MT6572_REGULAR_PIN(122, "GPIO122", DRV_GRP2),
+	MT6572_REGULAR_PIN(123, "GPIO123", DRV_GRP2),
+	MT6572_REGULAR_PIN(124, "GPIO124", DRV_GRP2),
+	MT6572_REGULAR_PIN(125, "GPIO125", DRV_GRP2),
+	MT6572_REGULAR_PIN(126, "GPIO126", DRV_GRP2),
+	MT6572_REGULAR_PIN(127, "GPIO127", DRV_GRP2),
+	MT6572_REGULAR_PIN(128, "GPIO128", DRV_GRP2),
+	MT6572_REGULAR_PIN(129, "GPIO129", DRV_GRP2),
+	MT6572_REGULAR_PIN(130, "GPIO130", DRV_GRP0),
+	MT6572_REGULAR_PIN(131, "GPIO131", DRV_GRP0),
+	MT6572_REGULAR_PIN(132, "GPIO132", DRV_GRP0),
+	MT6572_REGULAR_PIN(133, "GPIO133", DRV_GRP0),
+	MT6572_REGULAR_PIN(134, "GPIO134", DRV_GRP0),
+	MT6572_REGULAR_PIN(135, "GPIO135", DRV_GRP0),
+	MT6572_REGULAR_PIN(136, "GPIO136", DRV_GRP0),
+	MT6572_REGULAR_PIN(137, "GPIO137", DRV_GRP2),
+	MT6572_REGULAR_PIN(138, "GPIO138", DRV_GRP2),
+	MT6572_REGULAR_PIN(139, "GPIO139", DRV_GRP2),
+	MT6572_REGULAR_PIN(140, "GPIO140", DRV_GRP2),
+	MT6572_REGULAR_PIN(141, "GPIO141", DRV_GRP2),
+	MT6572_REGULAR_PIN(142, "GPIO142", DRV_GRP2),
+	MT6572_REGULAR_PIN(143, "GPIO143", DRV_GRP2),
+	MT6572_REGULAR_PIN(144, "GPIO144", DRV_GRP2),
+	MT6572_REGULAR_PIN(145, "GPIO145", DRV_GRP2),
+	MT6572_REGULAR_PIN(146, "GPIO146", DRV_GRP2),
+	MT6572_REGULAR_PIN(147, "GPIO147", DRV_GRP2),
+	MT6572_REGULAR_PIN(148, "GPIO148", DRV_GRP2),
+	MT6572_REGULAR_PIN(149, "GPIO149", DRV_GRP2),
+	MT6572_REGULAR_PIN(150, "GPIO150", DRV_GRP2),
+	MT6572_REGULAR_PIN(151, "GPIO151", DRV_GRP2),
+	MT6572_REGULAR_PIN(152, "GPIO152", DRV_GRP2),
+	MT6572_REGULAR_PIN(153, "GPIO153", DRV_GRP2),
+};
+
+static const struct mtk_io_type_desc mt6572_io_type_desc[] = {
+	[IO_TYPE_GRP0] = {
+		.name = "mt6572",
+		.bias_set = mtk_pinconf_bias_set_pullen_pullsel,
+		.drive_set = mtk_pinconf_drive_set_v1,
+		.input_enable = mtk_pinconf_input_enable_v1,
+	},
+	[IO_TYPE_GRP1] = {
+		.name = "MSDC",
+		.bias_set = mtk_pinconf_bias_set_pullsel_r1_r0,
+		.drive_set = mtk_pinconf_drive_set_v1,
+		.input_enable = mtk_pinconf_input_enable_v1,
+	},
+};
+
+/* List all groups consisting of these pins dedicated to the enablement of
+ * certain hardware block and the corresponding mode for all of the pins.
+ * The hardware probably has multiple combinations of these pinouts.
+ */
+
+/* UART0 */
+static int mt6572_uart0_pins[] = { 103, 104 };
+static int mt6572_uart0_funcs[] = { 1, 1 };
+/* MSDC0 */
+static int mt6572_msdc0_pins[] = { 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54 };
+static int mt6572_msdc0_funcs[] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+/* MSDC1 CD */
+static int mt6572_msdc1_cd_pins[] = { 86 };
+static int mt6572_msdc1_cd_funcs[] = { 4 };
+/* MSDC1 */
+static int mt6572_msdc1_pins[] = { 91, 92, 93, 94, 95, 96 };
+static int mt6572_msdc1_funcs[] = { 1, 1, 1, 1, 1, 1 };
+
+static const struct mtk_group_desc mt6572_groups[] = {
+	PINCTRL_PIN_GROUP("uart0", mt6572_uart0),
+	PINCTRL_PIN_GROUP("msdc0", mt6572_msdc0),
+	PINCTRL_PIN_GROUP("msdc1_cd", mt6572_msdc1_cd),
+	PINCTRL_PIN_GROUP("msdc1", mt6572_msdc1),
+};
+
+static const char *const mt6572_uart_groups[] = {
+	"uart0",
+};
+
+static const char *const mt6572_msdc0_groups[] = {
+	"msdc0",
+};
+
+static const char *const mt6572_msdc1_cd_groups[] = {
+	"msdc1_cd",
+};
+
+static const char *const mt6572_msdc1_groups[] = {
+	"msdc1",
+};
+
+static const struct mtk_function_desc mt6572_functions[] = {
+	{ "uart", mt6572_uart_groups, ARRAY_SIZE(mt6572_uart_groups) },
+	{ "msdc0", mt6572_msdc0_groups, ARRAY_SIZE(mt6572_msdc0_groups) },
+	{ "msdc1_cd", mt6572_msdc1_cd_groups, ARRAY_SIZE(mt6572_msdc1_cd_groups) },
+	{ "msdc1", mt6572_msdc1_groups, ARRAY_SIZE(mt6572_msdc1_groups) },
+};
+
+static const char * const mt6572_pinctrl_register_base_names[] = {
+	"base", "iocfg_t", "iocfg_b", "iocfg_l", "iocfg_r",
+};
+
+static struct mtk_pinctrl_soc mt6572_data = {
+	.name = "mt6572_pinctrl",
+	.reg_cal = mt6572_reg_cals,
+	.pins = mt6572_pins,
+	.npins = ARRAY_SIZE(mt6572_pins),
+	.grps = mt6572_groups,
+	.ngrps = ARRAY_SIZE(mt6572_groups),
+	.funcs = mt6572_functions,
+	.nfuncs = ARRAY_SIZE(mt6572_functions),
+	.io_type = mt6572_io_type_desc,
+	.ntype = ARRAY_SIZE(mt6572_io_type_desc),
+	.base_names = mt6572_pinctrl_register_base_names,
+	.nbase_names = ARRAY_SIZE(mt6572_pinctrl_register_base_names),
+	.base_calc = 1,
+	.rev = MTK_PINCTRL_V1,
+};
+
+static int mtk_pinctrl_mt6572_probe(struct udevice *dev)
+{
+	return mtk_pinctrl_common_probe(dev, &mt6572_data);
+}
+
+static const struct udevice_id mt6572_pctrl_match[] = {
+	{ .compatible = "mediatek,mt6572-pinctrl" },
+	{ /* sentinel */ }
+};
+
+U_BOOT_DRIVER(mt6572_pinctrl) = {
+	.name = "mt6572_pinctrl",
+	.id = UCLASS_PINCTRL,
+	.of_match = mt6572_pctrl_match,
+	.ops = &mtk_pinctrl_ops,
+	.bind = mtk_pinctrl_common_bind,
+	.probe = mtk_pinctrl_mt6572_probe,
+	.priv_auto = sizeof(struct mtk_pinctrl_priv),
+};
