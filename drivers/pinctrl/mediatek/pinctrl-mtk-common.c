@@ -463,6 +463,31 @@ int mtk_pinconf_bias_set_pullen_pullsel(struct udevice *dev, u32 pin,
 	return 0;
 }
 
+int mtk_pinconf_bias_set_pullsel_r1_r0(struct udevice *dev, u32 pin,
+				      bool disable, bool pullup, u32 val)
+{
+	int err, r0, r1;
+
+	r0 = !!(val & 1);
+	r1 = !!(val & 2);
+
+	if (disable) {
+		pullup = 0;
+		r0 = 0;
+		r1 = 0;
+	}
+
+	err = mtk_hw_set_value(dev, pin, PINCTRL_PIN_REG_R0, r0);
+	if (err)
+		return err;
+
+	err = mtk_hw_set_value(dev, pin, PINCTRL_PIN_REG_R1, r1);
+	if (err)
+		return err;
+
+	return mtk_hw_set_value(dev, pin, PINCTRL_PIN_REG_PULLSEL, pullup);
+}
+
 int mtk_pinconf_bias_set_pupd_r1_r0(struct udevice *dev, u32 pin, bool disable,
 				    bool pullup, u32 val)
 {
