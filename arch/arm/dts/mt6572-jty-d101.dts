@@ -1,0 +1,241 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2025 Max Shevchenko <wctrl@proton.me>
+ */
+
+/dts-v1/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include "mt6572.dtsi"
+#include "mt6323.dtsi"
+
+/ {
+	model = "JTY D101";
+	compatible = "jty,d101", "mediatek,mt6572";
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	chosen {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		stdout-path = "serial0:921600n8";
+		tick-timer = &timer;
+
+		framebuffer: framebuffer@bf400000 {
+			compatible = "simple-framebuffer";
+			memory-region = <&framebuffer_reserved>;
+			width = <1024>;
+			height = <600>;
+			stride = <(1024 * 2)>;
+			format = "r5g6b5";
+		};
+	};
+
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x80000000 0x40000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		framebuffer_reserved: framebuffer@bf400000 {
+			reg = <0xbf400000 0xc00000>;
+			no-map;
+		};
+	};
+};
+
+&keyboard {
+	status = "okay";
+	linux,keymap = <MATRIX_KEY(0, 0, KEY_UP)
+			MATRIX_KEY(1, 0, KEY_DOWN)>;
+	keypad,num-rows = <2>;
+	keypad,num-columns = <1>;
+	debounce-delay-ms = <32>;
+};
+
+&mmc0 {
+	bus-width = <8>;
+	max-frequency = <200000000>;
+	mmc-ddr-1_8v;
+	mmc-hs200-1_8v;
+	cap-mmc-highspeed;
+	non-removable;
+	no-sd;
+	no-sdio;
+
+	vmmc-supply = <&mt6323_vemc3v3_reg>;
+	vqmmc-supply = <&mt6323_vio18_reg>;
+	pinctrl-0 = <&mmc0_pins_default>;
+	pinctrl-1 = <&mmc0_pins_uhs>;
+	pinctrl-names = "default", "state_uhs";
+
+	assigned-clocks = <&topckgen CLK_TOP_MSDC0_SEL>;
+	assigned-clock-parents = <&topckgen CLK_TOP_MAINPLL_D8>;
+
+	status = "okay";
+};
+
+&mmc1 {
+	bus-width = <4>;
+	max-frequency = <200000000>;
+	sd-uhs-sdr12;
+	sd-uhs-sdr25;
+	sd-uhs-sdr50;
+	sd-uhs-sdr104;
+	sd-uhs-ddr50;
+	cap-sd-highspeed;
+	no-mmc;
+	no-sdio;
+
+	vmmc-supply = <&mt6323_vmch_reg>;
+	vqmmc-supply = <&mt6323_vmc_reg>;
+	pinctrl-0 = <&mmc1_pins_cd>, <&mmc1_pins_default>;
+	pinctrl-1 = <&mmc1_pins_cd>, <&mmc1_pins_uhs>;
+	pinctrl-names = "default", "state_uhs";
+	cd-gpios = <&pio 86 GPIO_ACTIVE_LOW>;
+
+	assigned-clocks = <&topckgen CLK_TOP_MSDC1_SEL>;
+	assigned-clock-parents = <&topckgen CLK_TOP_MAINPLL_D10>;
+
+	status = "okay";
+};
+
+&pio {
+	mmc0_pins_default: mmc0-default-pins {
+		mux {
+			function = "msdc0";
+			groups = "msdc0";
+		};
+	
+		conf-cmd-dat {
+			pins = "GPIO45", "GPIO46", "GPIO47", "GPIO48",
+			       "GPIO49", "GPIO50", "GPIO51", "GPIO52",
+			       "GPIO53";
+			input-enable;
+			input-schmitt-enable;
+			drive-strength = <6>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		conf-clk {
+			pins = "GPIO44";
+			drive-strength = <6>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins-rst {
+			pins = "GPIO54";
+			drive-strength = <6>;
+			bias-pull-up;
+		};
+	};
+
+	mmc0_pins_uhs: mmc0-uhs-pins {
+		mux {
+			function = "msdc0";
+			groups = "msdc0";
+		};
+	
+		conf-cmd-dat {
+			pins = "GPIO45", "GPIO46", "GPIO47", "GPIO48",
+			       "GPIO49", "GPIO50", "GPIO51", "GPIO52",
+			       "GPIO53";
+			input-enable;
+			input-schmitt-enable;
+			drive-strength = <8>;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
+		};
+
+		conf-clk {
+			pins = "GPIO44";
+			drive-strength = <8>;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
+		};
+
+		pins-rst {
+			pins = "GPIO54";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+
+	mmc1_pins_default: mmc1-default-pins {
+		mux {
+			function = "msdc1";
+			groups = "msdc1";
+		};
+
+		conf-cmd-dat {
+			pins = "GPIO92", "GPIO93", "GPIO94", "GPIO95",
+			       "GPIO96";
+			input-enable;
+			input-schmitt-enable;
+			drive-strength = <20>;
+			bias-pull-up;
+			mediatek,tdsel = <5>;
+		};
+
+		conf-clk {
+			pins = "GPIO91";
+			drive-strength = <20>;
+			bias-pull-down;
+		};
+	};
+
+	mmc1_pins_uhs: mmc1-uhs-pins {
+		mux {
+			function = "msdc1";
+			groups = "msdc1";
+		};
+
+		conf-cmd-dat {
+			pins = "GPIO92", "GPIO93", "GPIO94", "GPIO95",
+			       "GPIO96";
+			input-enable;
+			input-schmitt-enable;
+			drive-strength = <24>;
+			bias-pull-up;
+			mediatek,tdsel = <0>;
+		};
+
+		conf-clk {
+			pins = "GPIO91";
+			drive-strength = <24>;
+			bias-pull-down;
+		};
+	};
+
+	mmc1_pins_cd: mmc1-cd-pins {
+		mux {
+			function = "msdc1_cd";
+			groups = "msdc1_cd";
+		};
+
+		conf-cd {
+			pins = "GPIO86";
+		};
+	};
+};
+
+&pmic {
+	interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
+};
+
+&u2phy0 {
+	status = "okay";
+};
+
+&uart0 {
+	status = "okay";
+};
+
+&usb {
+	dr_mode = "peripheral";
+	status = "okay";
+};
