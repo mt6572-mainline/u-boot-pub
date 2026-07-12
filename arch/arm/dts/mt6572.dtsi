@@ -1,0 +1,429 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2025 Max Shevchenko <wctrl@proton.me>
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/clock/mediatek,mt6572-clk.h>
+#include <dt-bindings/reset/mediatek,mt6572-resets.h>
+#include <dt-bindings/power/mediatek,mt6572-power-controller.h>
+#include <dt-bindings/pinctrl/mediatek,mt6572-pinfunc.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	interrupt-parent = <&sysirq>;
+
+
+	/*
+	 * MT6572M has 3 fused,
+	 * MT6572A has 2 fused,
+	 * MT6572W has 0 or 1 fused.
+	 *
+	 * Therefore, we use BIT(0) | BIT(1) | BIT(2) | BIT(3) for all
+	 * supported frequencies,
+	 * BIT(0) | BIT(1) | BIT(2) for 1209 MHz,
+	 * and BIT(0) | BIT(1) for 1300 and 1404 MHz
+	 */
+	cpu_opp_table: opp-table-cpu {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		/* MT6572M, MT6572A, MT6572W */
+		opp-598000000 {
+			opp-hz = /bits/ 64 <598000000>;
+			opp-microvolt = <1150000>;
+			opp-supported-hw = <0xf>;
+		};
+
+		opp-806000000 {
+			opp-hz = /bits/ 64 <806000000>;
+			opp-microvolt = <1150000>;
+			opp-supported-hw = <0xf>;
+		};
+
+		opp-1001000000 {
+			opp-hz = /bits/ 64 <1001000000>;
+			opp-microvolt = <1150000>;
+			opp-supported-hw = <0xf>;
+		};
+
+		/* MT6572A, MT6572W */
+		opp-1209000000 {
+			opp-hz = /bits/ 64 <1209000000>;
+			opp-microvolt = <1150000>;
+			opp-supported-hw = <0x7>;
+		};
+
+		/* MT6572W */
+		opp-1300000000 {
+			opp-hz = /bits/ 64 <1300000000>;
+			opp-microvolt = <1150000>;
+			opp-supported-hw = <0x3>;
+		};
+
+		opp-1404000000 {
+			opp-hz = /bits/ 64 <1404000000>;
+			opp-microvolt = <1150000>;
+			opp-supported-hw = <0x3>;
+		};
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		enable-method = "mediatek,mt6589-smp";
+
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x0>;
+			clocks = <&infracfg_ao CLK_INFRA_CPUSEL>,
+				 <&topckgen CLK_TOP_MAINPLL_D2>;
+			clock-names = "cpu", "intermediate";
+			i-cache-size = <32768>;
+			i-cache-line-size = <64>;
+			i-cache-sets = <256>;
+			d-cache-size = <32768>;
+			d-cache-line-size = <64>;
+			d-cache-sets = <128>;
+			next-level-cache = <&l2>;
+			nvmem-cells = <&cpu_speedbin>;
+			nvmem-cell-names = "speed_grade";
+			operating-points-v2 = <&cpu_opp_table>;
+		};
+		cpu1: cpu@1 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x1>;
+			clocks = <&infracfg_ao CLK_INFRA_CPUSEL>,
+				 <&topckgen CLK_TOP_MAINPLL_D2>;
+			clock-names = "cpu", "intermediate";
+			i-cache-size = <32768>;
+			i-cache-line-size = <64>;
+			i-cache-sets = <256>;
+			d-cache-size = <32768>;
+			d-cache-line-size = <64>;
+			d-cache-sets = <128>;
+			next-level-cache = <&l2>;
+			nvmem-cells = <&cpu_speedbin>;
+			nvmem-cell-names = "speed_grade";
+			operating-points-v2 = <&cpu_opp_table>;
+		};
+
+		l2: l2-cache {
+			compatible = "cache";
+			cache-level = <2>;
+			cache-size = <262144>;
+			cache-line-size = <64>;
+			cache-sets = <512>;
+			cache-unified;
+		};
+	};
+
+	clk26m: clk26m {
+		compatible = "fixed-clock";
+		clock-frequency = <26000000>;
+		#clock-cells = <0>;
+	};
+
+	clk13m: clk13m {
+		compatible = "fixed-clock";
+		clock-frequency = <13000000>;
+		#clock-cells = <0>;
+	};
+
+	clk32k: clk32k {
+		compatible = "fixed-clock";
+		clock-frequency = <32000>;
+		#clock-cells = <0>;
+	};
+
+	soc {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		compatible = "simple-bus";
+		ranges;
+
+		topckgen: syscon@10000000 {
+			compatible = "mediatek,mt6572-topckgen", "syscon";
+			reg = <0x10000000 0x1000>;
+			#clock-cells = <1>;
+			bootph-all;
+		};
+
+		infracfg_ao: syscon@10001000 {
+			compatible = "mediatek,mt6572-infracfg_ao", "syscon";
+			reg = <0x10001000 0x1000>;
+			#access-controller-cells = <0>;
+			#clock-cells = <1>;
+		};
+
+		keyboard: keyboard@10002000 {
+			compatible = "mediatek,mt6572-keypad", "mediatek,mt6779-keypad";
+			reg = <0x10002000 0x1000>;
+			interrupts = <GIC_SPI 89 IRQ_TYPE_EDGE_FALLING>;
+			clocks = <&clk26m>;
+			clock-names = "kpd";
+			status = "disabled";
+		};
+
+		pio: pinctrl@10005000 {
+			compatible = "mediatek,mt6572-pinctrl";
+			reg = <0x10005000 0x1000>,
+			      <0x10208000 0x1000>,
+			      <0x10209000 0x1000>,
+			      <0x1020a000 0x1000>,
+			      <0x1020b000 0x1000>,
+			      <0x1000b000 0x1000>;
+			reg-names = "base", "iocfg_t", "iocfg_b",
+				    "iocfg_l", "iocfg_r", "eint";
+			interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-controller;
+			interrupt-parent = <&gic>;
+			#interrupt-cells = <2>;
+			gpio-controller;
+			gpio-ranges = <&pio 0 0 154>;
+			#gpio-cells = <2>;
+		};
+
+		syscon@10006000 {
+			compatible = "mediatek,mt6572-scpsys", "syscon", "simple-mfd";
+			reg = <0x10006000 0x1000>;
+
+			spm: power-controller {
+				compatible = "mediatek,mt6572-power-controller";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				#power-domain-cells = <1>;
+				access-controllers = <&infracfg_ao>;
+
+				power-domain@MT6572_POWER_DOMAIN_MD1 {
+					reg = <MT6572_POWER_DOMAIN_MD1>;
+					#power-domain-cells = <0>;
+				};
+
+				power-domain@MT6572_POWER_DOMAIN_CONN {
+					reg = <MT6572_POWER_DOMAIN_CONN>;
+					#power-domain-cells = <0>;
+				};
+
+				power-domain@MT6572_POWER_DOMAIN_DIS {
+					reg = <MT6572_POWER_DOMAIN_DIS>;
+					#power-domain-cells = <0>;
+				};
+
+				power-domain@MT6572_POWER_DOMAIN_MFG {
+					reg = <MT6572_POWER_DOMAIN_MFG>;
+					#power-domain-cells = <0>;
+					clocks = <&topckgen CLK_TOP_MFG_MM>;
+					clock-names = "mfg";
+				};
+			};
+		};
+
+		watchdog: watchdog@10007000 {
+			compatible = "mediatek,mt6572-wdt", "mediatek,mt6589-wdt";
+			reg = <0x10007000 0x100>;
+			interrupts = <GIC_SPI 126 IRQ_TYPE_LEVEL_LOW>;
+			timeout-sec = <15>;
+			#reset-cells = <1>;
+		};
+
+		timer: timer@10008000 {
+			compatible = "mediatek,mt6572-timer", "mediatek,mt6577-timer";
+			reg = <0x10008000 0x80>;
+			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_LOW>;
+			clocks = <&clk13m>, <&clk32k>;
+			clock-names = "system-clk", "rtc-clk";
+		};
+
+		efuse: efuse@10009000 {
+			compatible = "mediatek,mt6572-efuse", "mediatek,efuse";
+			reg = <0x10009000 0x1000>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			thermal_calibration: calib@174 {
+				reg = <0x174 0x8>;
+			};
+
+			socinfo-data1@180 {
+				reg = <0x180 0x4>;
+			};
+
+			cpu_speedbin: cpu-speedbin@180 {
+				reg = <0x180 0x4>;
+				bits = <8 2>;
+			};
+		};
+
+		pwrap: pwrap@1000f000 {
+			compatible = "mediatek,mt6572-pwrap";
+			reg = <0x1000f000 0x1000>;
+			reg-names = "pwrap";
+			interrupts = <GIC_SPI 88 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&watchdog MT6572_TOPRGU_PWRAP_SPI_CTL_RST>;
+			reset-names = "pwrap";
+			clocks = <&topckgen CLK_TOP_PMIC_SPI>,
+				 <&topckgen CLK_TOP_PMIC_26M>;
+			clock-names = "spi", "wrap";
+		};
+
+		sysirq: interrupt-controller@10200100 {
+			compatible = "mediatek,mt6572-sysirq", "mediatek,mt6577-sysirq";
+			reg = <0x10200100 0x1c>;
+			interrupt-controller;
+			#interrupt-cells = <3>;
+			interrupt-parent = <&gic>;
+		};
+
+		apmixedsys: apmixedsys@10205000 {
+			compatible = "mediatek,mt6572-apmixedsys", "syscon";
+			reg = <0x10205000 0x1000>;
+			#clock-cells = <1>;
+			bootph-all;
+		};
+
+		auxadc: auxadc@11003000 {
+			compatible = "mediatek,mt6572-auxadc", "mediatek,mt8173-auxadc";
+			reg = <0x11003000 0x1000>;
+			clocks = <&topckgen CLK_TOP_AUXADC>;
+			clock-names = "main";
+			#io-channel-cells = <1>;
+		};
+
+		gic: interrupt-controller@10211000 {
+			compatible = "arm,cortex-a7-gic";
+			reg = <0x10211000 0x1000>,
+			      <0x10212000 0x2000>,
+			      <0x10214000 0x2000>,
+			      <0x10216000 0x2000>;
+			interrupt-controller;
+			#interrupt-cells = <3>;
+			interrupt-parent = <&gic>;
+		};
+
+		uart0: serial@11005000 {
+			compatible = "mediatek,mt6572-uart", "mediatek,mt6577-uart";
+			reg = <0x11005000 0x400>;
+			interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_LOW>;
+			clocks = <&topckgen CLK_TOP_UART0_SEL>,
+				 <&topckgen CLK_TOP_UART0>;
+			clock-names = "baud", "bus";
+			status = "disabled";
+		};
+
+		uart1: serial@11006000 {
+			compatible = "mediatek,mt6572-uart", "mediatek,mt6577-uart";
+			reg = <0x11006000 0x400>;
+			interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_LOW>;
+			clocks = <&topckgen CLK_TOP_UART1_SEL>,
+				 <&topckgen CLK_TOP_UART1>;
+			clock-names = "baud", "bus";
+			status = "disabled";
+		};
+
+		i2c0: i2c@11009000 {
+			compatible = "mediatek,mt6572-i2c";
+			reg = <0x11009000 0x70>,
+			      <0x11000180 0x80>,
+			      <0x11000200 0x80>;
+			interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_LOW>;
+			clocks = <&topckgen CLK_TOP_I2C0>, <&topckgen CLK_TOP_APDMA>;
+			clock-names = "main", "dma";
+			clock-div = <12>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "disabled";
+		};
+
+		i2c1: i2c@1100a000 {
+		        compatible = "mediatek,mt6572-i2c";
+		        reg = <0x1100a000 0x70>,
+		              <0x11000280 0x80>,
+		              <0x11000300 0x80>;
+		        interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_LOW>;
+		        clocks = <&topckgen CLK_TOP_I2C1>, <&topckgen CLK_TOP_APDMA>;
+		        clock-names = "main", "dma";
+		        clock-div = <12>;
+		        #address-cells = <1>;
+		        #size-cells = <0>;
+		        status = "disabled";
+		};
+
+		thermal: thermal@1100d000 {
+			#thermal-sensor-cells = <1>;
+			compatible = "mediatek,mt6572-thermal";
+			reg = <0x1100d000 0x1000>;
+			interrupts = <GIC_SPI 25 IRQ_TYPE_LEVEL_LOW>;
+			clocks = <&topckgen CLK_TOP_THERMAL>, <&topckgen CLK_TOP_AUXADC>;
+			clock-names = "therm", "auxadc";
+			mediatek,auxadc = <&auxadc>;
+			mediatek,apmixedsys = <&apmixedsys>;
+			nvmem-cells = <&thermal_calibration>;
+			nvmem-cell-names = "calibration-data";
+		};
+
+		usb: usb@11100000 {
+			compatible = "mediatek,mt6572-musb", "mediatek,mtk-musb";
+			reg = <0x11100000 0x1000>;
+			interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_LOW>;
+			interrupt-names = "mc";
+			phys = <&u2port0 PHY_TYPE_USB2>;
+			dr_mode = "otg";
+			clocks = <&topckgen CLK_TOP_USB>,
+				 <&topckgen CLK_TOP_USB>,
+				 <&apmixedsys CLK_APMIXED_USB48M>;
+			clock-names = "main", "mcu", "univpll";
+			status = "disabled";
+		};
+
+		u2phy0: t-phy@11110000 {
+		        compatible = "mediatek,mt6572-tphy",
+				     "mediatek,generic-tphy-v1";
+			reg = <0x11110000 0x0700>;
+			ranges;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			status = "disabled";
+
+			u2port0: usb-phy@11110800 {
+				reg = <0x11110800 0x0100>;
+				clocks = <&apmixedsys CLK_APMIXED_USB48M>;
+				clock-names = "ref";
+				#phy-cells = <1>;
+		        };
+		};
+
+		mmc0: mmc@11120000 {
+			compatible = "mediatek,mt6572-mmc", "mediatek,mt8135-mmc";
+			reg = <0x11120000 0x1000>;
+			interrupts = <GIC_SPI 26 IRQ_TYPE_LEVEL_LOW>;
+			clocks = <&topckgen CLK_TOP_MSDC0>,
+				 <&topckgen CLK_TOP_MSDC0_SEL>;
+			clock-names = "source", "hclk";
+			status = "disabled";
+		};
+
+		mmc1: mmc@11130000 {
+		        compatible = "mediatek,mt6572-mmc", "mediatek,mt8135-mmc";
+		        reg = <0x11130000 0x1000>;
+		        interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_LOW>;
+		        clocks = <&topckgen CLK_TOP_MSDC1>,
+				 <&topckgen CLK_TOP_MSDC1_SEL>;
+		        clock-names = "source", "hclk";
+		        status = "disabled";
+		};
+
+		mfgcfg: syscon@13000000 {
+			compatible = "mediatek,mt6572-mfgcfg", "syscon";
+			reg = <0x13000000 0x1000>;
+			#clock-cells = <1>;
+			power-domains = <&spm MT6572_POWER_DOMAIN_MFG>;
+		};
+	};
+};
+
