@@ -201,5 +201,20 @@
 				regulator-max-microvolt = <1800000>;
 			};
 		};
+
+		mt6323keys: mt6323keys {
+			compatible = "mediatek,mt6323-keys";
+			mediatek,long-press-mode = <1>;
+			power-off-time-sec = <0>;
+
+			power {
+				linux,code = <116>;
+				wakeup-source;
+			};
+
+			home {
+				linux,code = <114>;
+			};
+		};
 	};
 };
