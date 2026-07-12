@@ -2,6 +2,7 @@
 #include <asm/global_data.h>
 #include <dm.h>
 #include <init.h>
+#include <fdt_support.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -27,5 +28,20 @@ int board_late_init(void)
 /* LK framebuffer */
 phys_addr_t board_get_usable_ram_top(phys_addr_t total_size)
 {
-	return 0xbf400000;
+	const char *compatible;
+	int len;
+
+	compatible = fdt_getprop(gd->fdt_blob, 0, "compatible", &len);
+	if (compatible && len) {
+		debug("Compatible: %s\n", compatible);
+
+		if (!strcmp(compatible, "jty,d101"))
+			return 0xbf400000;
+		else if (!strcmp(compatible, "lenovo,a369i"))
+			return 0x9fa00000;
+		else
+			panic("invalid compatible: %s", compatible);
+	}
+
+	panic("can't get compatible property: %d", len);
 }
