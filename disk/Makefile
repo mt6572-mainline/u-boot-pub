@@ -17,4 +17,5 @@ obj-$(CONFIG_$(PHASE_)DOS_PARTITION)   += part_dos.o
 obj-$(CONFIG_$(PHASE_)ISO_PARTITION)   += part_iso.o
 obj-$(CONFIG_$(PHASE_)AMIGA_PARTITION) += part_amiga.o
 obj-$(CONFIG_$(PHASE_)EFI_PARTITION)   += part_efi.o
+obj-$(CONFIG_$(PHASE_)PMT_PARTITION)   += part_pmt.o
 endif

@@ -30,6 +30,7 @@ struct block_drvr {
 #define PART_TYPE_EFI		0x05
 #define PART_TYPE_MTD		0x06
 #define PART_TYPE_UBI		0x07
+#define PART_TYPE_PMT		0x08
 
 /* maximum number of partition entries supported by search */
 #define DOS_ENTRY_NUMBERS	8

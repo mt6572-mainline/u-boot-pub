@@ -17,6 +17,7 @@ config PARTITIONS
 	  If IDE or SCSI support is enabled (CONFIG_CMD_IDE or CONFIG_SCSI)
 	  you must configure support for at least one non-MTD partition type
 	  as well.
+	  - CONFIG_PMT_PARTITION   MediaTek PMT parition table.
 
 config SPL_PARTITIONS
 	bool
@@ -175,5 +176,12 @@ config SPL_PARTITION_TYPE_GUID
 	help
 	  Activate the configuration of GUID type
 	  for EFI partition
+
+config PMT_PARTITION
+	bool "Enable MediaTek PMT partition table"
+	default y if TARGET_MT6572
+	select PARTITIONS
+	help
+	  MediaTek's pre-GPT partition table
 
 endmenu
