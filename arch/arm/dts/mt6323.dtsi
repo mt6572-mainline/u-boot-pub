@@ -9,6 +9,7 @@
 &pwrap {
 	pmic: mt6323 {
 		compatible = "mediatek,mt6323";
+		interrupt-parent = <&pio>;
 
 		regulators {
 			mt6323_vproc_reg: buck-vproc {
